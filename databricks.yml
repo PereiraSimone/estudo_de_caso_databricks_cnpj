@@ -1,0 +1,48 @@
+bundle:
+  name: cnpj-pipeline
+
+resources:
+  jobs:
+    pipeline_cnpj_medallion:
+      name: "[PROD] Pipeline Medallion CNPJ & Gold Products"
+      schedule:
+        quartz_cron_expression: "0 0 3 * * ?" # Diário às 03:00 UTC
+        timezone_id: "America/Sao_Paulo"
+      
+      tasks:
+        - task_key: silver_empresas
+          notebook_task:
+            notebook_path: notebooks/01_raw_to_silver_empresas
+            source: GIT
+        
+        - task_key: silver_estabelecimentos
+          notebook_task:
+            notebook_path: notebooks/02_raw_to_silver_estabelecimentos
+            source: GIT
+        
+        - task_key: silver_socios
+          notebook_task:
+            notebook_path: notebooks/03_raw_to_silver_socios
+            source: GIT
+
+        - task_key: silver_apoio_simples
+          notebook_task:
+            notebook_path: notebooks/04_raw_to_silver_apoio_simples
+            source: GIT
+
+        - task_key: gold_produtos_base
+          depends_on:
+            - task_key: silver_empresas
+            - task_key: silver_estabelecimentos
+            - task_key: silver_socios
+            - task_key: silver_apoio_simples
+          notebook_task:
+            notebook_path: notebooks/05_silver_to_gold_produtos_base
+            source: GIT
+
+        - task_key: gold_produtos_avancados
+          depends_on:
+            - task_key: gold_produtos_base
+          notebook_task:
+            notebook_path: notebooks/06_silver_to_gold_produtos_avancados
+            source: GIT

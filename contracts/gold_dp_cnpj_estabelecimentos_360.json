@@ -9,11 +9,10 @@
     "domain": "Cadastro Corporativo"
   },
   "servers": {
-    "production": {
+    "homolog": {
       "type": "databricks",
       "catalog": "workspace",
-      "schema": "homolog_gold",
-      "database": "homolog_gold"
+      "schema": "homolog_gold"
     }
   },
   "models": {
@@ -23,7 +22,7 @@
           "type": "long",
           "primary": true,
           "required": true,
-          "description": "CNPJ formatado como inteiro longo para o teste v1."
+          "description": "CNPJ formatado como inteiro longo para o baseline v1."
         },
         "nr_cnpj_basico": {
           "type": "long",

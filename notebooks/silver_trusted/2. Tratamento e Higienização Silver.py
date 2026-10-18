@@ -1,44 +1,26 @@
 # Databricks notebook source
+# COMMAND ----------
 from pyspark.sql import functions as F
 
-# 1. Configuração do Widget de Ambiente
 dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")
 ENV = dbutils.widgets.get("env")
 
-# 2. Resolução dinâmica dos schemas
 SCHEMA_RAW = f"workspace.{ENV}_raw"
 SCHEMA_SILVER = f"workspace.{ENV}_silver"
-SCHEMA_GOLD = f"workspace.{ENV}_gold"
-
-print(f"=== INICIANDO PROCESSAMENTO SILVER (TABELAS DE APOIO & SIMPLES) [{ENV.upper()}] ===")
-print(f"Schema Silver Destino: {SCHEMA_SILVER}")
-
-# Assegura a criação do schema de destino no Unity Catalog
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_SILVER}")
 
-# 3. Caminho base dos arquivos brutos
-BASE_DIR = "/Volumes/workspace/default/cnpj_ingestion/bronze/tabelas_apoio"
+print(f"=== [SILVER] PROCESSAMENTO FULL: {SCHEMA_RAW} -> {SCHEMA_SILVER} ===")
 
-# Controlo de volumetria para tabelas densas (como Simples Nacional)
-LIMITES_AMOSTRA = {
-    "dev": 1000,
-    "homolog": 10000,
-    "prod": None
-}
-limite_linhas = LIMITES_AMOSTRA.get(ENV)
+BASE_DIR_APOIO = "/Volumes/workspace/default/cnpj_ingestion/bronze/tabelas_apoio"
 
-# -------------------------------------------------------------------------
-# 1. SILVER: SIMPLES NACIONAL E MEI (Sufixo _07)
-# -------------------------------------------------------------------------
-df_simples_raw = spark.read.parquet(f"{BASE_DIR}/*_07.parquet")
-
-if limite_linhas is not None:
-    df_simples_raw = df_simples_raw.limit(limite_linhas)
+# COMMAND ----------
+# 1. Simples Nacional e MEI (Base Full)
+print("A processar Simples Nacional e MEI...")
+df_simples_raw = spark.read.parquet(f"{BASE_DIR_APOIO}/*_07.parquet")
 
 df_silver_simples = (
     df_simples_raw
     .select(
-        # CNPJ Básico mantido como BIGINT para posterior teste de quebra de contrato Alice
         F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
         F.upper(F.trim(F.col("col_1"))).alias("fl_opcao_simples"),
         F.to_date(F.try_to_date(F.col("col_2").cast("string"), "yyyyMMdd"), "yyyy-MM-dd").alias("dt_opcao_simples"),
@@ -58,72 +40,117 @@ df_silver_simples = (
     .option("overwriteSchema", "true")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_simples_nacional")
 )
-print(f"-> {SCHEMA_SILVER}.silver_simples_nacional criada com sucesso.")
 
-# -------------------------------------------------------------------------
-# 2. SILVER: DOMÍNIO DE MUNICÍPIOS (Sufixo _03)
-# -------------------------------------------------------------------------
-(
-    spark.read.parquet(f"{BASE_DIR}/*_03.parquet")
-    .select(
-        F.col("col_0").cast("int").alias("cd_municipio"),
-        F.upper(F.trim(F.col("col_1"))).alias("ds_municipio"),
-        F.current_timestamp().alias("dt_silver_update")
+# COMMAND ----------
+# 2. Tabelas de Domínio
+print("A processar tabelas de domínio...")
+dominios = [
+    ("_03.parquet", "cd_municipio", "int", "ds_municipio", "silver_dominio_municipios"),
+    ("_05.parquet", "cd_natureza_juridica", "int", "ds_natureza_juridica", "silver_dominio_naturezas_juridicas"),
+    ("_04.parquet", "cd_qualificacao", "int", "ds_qualificacao", "silver_dominio_qualificacoes"),
+    ("_02.parquet", "cd_pais", "int", "ds_pais", "silver_dominio_paises")
+]
+
+for arquivo, cd_col, tipo_dado, ds_col, nome_tabela in dominios:
+    (
+        spark.read.parquet(f"{BASE_DIR_APOIO}/*{arquivo}")
+        .select(
+            F.col("col_0").cast(tipo_dado).alias(cd_col),
+            F.upper(F.trim(F.col("col_1"))).alias(ds_col),
+            F.current_timestamp().alias("dt_silver_update")
+        )
+        .dropDuplicates([cd_col])
+        .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+        .saveAsTable(f"{SCHEMA_SILVER}.{nome_tabela}")
     )
-    .dropDuplicates(["cd_municipio"])
-    .write.format("delta").mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable(f"{SCHEMA_SILVER}.silver_dominio_municipios")
-)
-print(f"-> {SCHEMA_SILVER}.silver_dominio_municipios criada com sucesso.")
 
-# -------------------------------------------------------------------------
-# 3. SILVER: DOMÍNIO DE CNAES (Sufixo _01)
-# -------------------------------------------------------------------------
 (
-    spark.read.parquet(f"{BASE_DIR}/*_01.parquet")
+    spark.read.parquet(f"{BASE_DIR_APOIO}/*_01.parquet")
     .select(
         F.lpad(F.col("col_0").cast("string"), 7, "0").alias("cd_cnae"),
         F.upper(F.trim(F.col("col_1"))).alias("ds_cnae"),
         F.current_timestamp().alias("dt_silver_update")
     )
     .dropDuplicates(["cd_cnae"])
-    .write.format("delta").mode("overwrite")
-    .option("overwriteSchema", "true")
+    .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_dominio_cnaes")
 )
-print(f"-> {SCHEMA_SILVER}.silver_dominio_cnaes criada com sucesso.")
 
-# -------------------------------------------------------------------------
-# 4. SILVER: DOMÍNIO DE NATUREZAS JURÍDICAS (Sufixo _05)
-# -------------------------------------------------------------------------
+# COMMAND ----------
+# 3. Empresas (Base Full)
+print("A processar Silver Empresas...")
 (
-    spark.read.parquet(f"{BASE_DIR}/*_05.parquet")
+    spark.table(f"{SCHEMA_RAW}.raw_empresas")
     .select(
-        F.col("col_0").cast("int").alias("cd_natureza_juridica"),
-        F.upper(F.trim(F.col("col_1"))).alias("ds_natureza_juridica"),
+        F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
+        F.upper(F.trim(F.col("col_1"))).alias("nm_razao_social"),
+        F.col("col_2").cast("int").alias("cd_natureza_juridica"),
+        F.col("col_3").cast("int").alias("cd_qualificacao_responsavel"),
+        F.regexp_replace(F.col("col_4"), ",", ".").cast("decimal(18,2)").alias("vl_capital_social"),
+        F.col("col_5").cast("string").alias("cd_porte_empresa"),
+        F.col("col_6").cast("string").alias("ds_ente_federativo_responsavel"),
         F.current_timestamp().alias("dt_silver_update")
     )
-    .dropDuplicates(["cd_natureza_juridica"])
-    .write.format("delta").mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable(f"{SCHEMA_SILVER}.silver_dominio_naturezas_juridicas")
+    .dropDuplicates(["nr_cnpj_basico"])
+    .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+    .saveAsTable(f"{SCHEMA_SILVER}.silver_empresas")
 )
-print(f"-> {SCHEMA_SILVER}.silver_dominio_naturezas_juridicas criada com sucesso.")
 
-# -------------------------------------------------------------------------
-# 5. SILVER: DOMÍNIO DE QUALIFICAÇÕES DE SÓCIOS (Sufixo _04)
-# -------------------------------------------------------------------------
+# COMMAND ----------
+# 4. Estabelecimentos (Base Full particionada por UF)
+print("A processar Silver Estabelecimentos...")
 (
-    spark.read.parquet(f"{BASE_DIR}/*_04.parquet")
+    spark.table(f"{SCHEMA_RAW}.raw_estabelecimentos")
     .select(
-        F.col("col_0").cast("int").alias("cd_qualificacao"),
-        F.upper(F.trim(F.col("col_1"))).alias("ds_qualificacao"),
+        F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
+        F.concat(
+            F.lpad(F.col("col_0").cast("string"), 8, "0"),
+            F.lpad(F.col("col_1").cast("string"), 4, "0"),
+            F.lpad(F.col("col_2").cast("string"), 2, "0")
+        ).cast("bigint").alias("nr_cnpj_completo"),
+        F.col("col_3").cast("int").alias("cd_identificador_matriz_filial"),
+        F.upper(F.trim(F.col("col_4"))).alias("nm_fantasia"),
+        F.col("col_5").cast("string").alias("cd_situacao_cadastral"),
+        F.to_date(F.try_to_date(F.col("col_6").cast("string"), "yyyyMMdd"), "yyyy-MM-dd").alias("dt_situacao_cadastral"),
+        F.col("col_7").cast("int").alias("cd_motivo_situacao_cadastral"),
+        F.to_date(F.try_to_date(F.col("col_10").cast("string"), "yyyyMMdd"), "yyyy-MM-dd").alias("dt_inicio_atividade"),
+        F.lpad(F.col("col_11").cast("string"), 7, "0").alias("cd_cnae_fiscal_principal"),
+        F.col("col_12").cast("string").alias("ds_cnae_fiscal_secundaria"),
+        F.col("col_13").cast("string").alias("ds_tipo_logradouro"),
+        F.col("col_14").cast("string").alias("nm_logradouro"),
+        F.col("col_15").cast("string").alias("nr_logradouro"),
+        F.col("col_18").cast("string").alias("nm_bairro"),
+        F.col("col_19").cast("string").alias("nr_cep"),
+        F.col("col_20").cast("string").alias("sg_uf"),
+        F.col("col_21").cast("int").alias("cd_municipio"),
         F.current_timestamp().alias("dt_silver_update")
     )
-    .dropDuplicates(["cd_qualificacao"])
-    .write.format("delta").mode("overwrite")
-    .option("overwriteSchema", "true")
-    .saveAsTable(f"{SCHEMA_SILVER}.silver_dominio_qualificacoes_socios")
+    .dropDuplicates(["nr_cnpj_completo"])
+    .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+    .partitionBy("sg_uf")
+    .saveAsTable(f"{SCHEMA_SILVER}.silver_estabelecimentos")
 )
-print(f"-> {SCHEMA_SILVER}.silver_dominio_qualificacoes_socios criada com sucesso.")
+
+# COMMAND ----------
+# 5. Sócios (Base Full com Hash LGPD)
+print("A processar Silver Sócios...")
+(
+    spark.table(f"{SCHEMA_RAW}.raw_socios")
+    .select(
+        F.sha2(F.concat_ws("||", F.col("col_0"), F.col("col_1"), F.col("col_3")), 256).alias("id_socio_hash"),
+        F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
+        F.col("col_1").cast("int").alias("cd_identificador_socio"),
+        F.upper(F.trim(F.col("col_2"))).alias("nm_socio"),
+        F.col("col_3").cast("string").alias("nr_documento_socio_mascarado"),
+        F.col("col_4").cast("int").alias("cd_qualificacao_socio"),
+        F.to_date(F.try_to_date(F.col("col_5").cast("string"), "yyyyMMdd"), "yyyy-MM-dd").alias("dt_entrada_sociedade"),
+        F.col("col_6").cast("int").alias("cd_pais"),
+        F.col("col_10").cast("int").alias("cd_faixa_etaria"),
+        F.current_timestamp().alias("dt_silver_update")
+    )
+    .dropDuplicates(["id_socio_hash"])
+    .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
+    .saveAsTable(f"{SCHEMA_SILVER}.silver_socios")
+)
+
+print(f"=== [SILVER] CONCLUÍDO COM SUCESSO: {SCHEMA_SILVER} ===")

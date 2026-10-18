@@ -21,7 +21,6 @@
    },
    "outputs": [
     {
-     "output_type": "stream",
      "name": "stdout",
      "output_type": "stream",
      "text": [
@@ -30,10 +29,21 @@
     }
    ],
    "source": [
+    "# Databricks notebook source\n",
+    "# COMMAND ----------\n",
     "from pyspark.sql import functions as F\n",
     "\n",
-    "df_est = spark.table(\"workspace.prod_silver.silver_estabelecimentos\")\n",
-    "df_emp = spark.table(\"workspace.prod_silver.silver_empresas\")\n",
+    "dbutils.widgets.dropdown(\"env\", \"homolog\", [\"dev\", \"homolog\", \"prod\"], \"Ambiente Alvo\")\n",
+    "ENV = dbutils.widgets.get(\"env\")\n",
+    "\n",
+    "SCHEMA_SILVER = f\"workspace.{ENV}_silver\"\n",
+    "SCHEMA_GOLD = f\"workspace.{ENV}_gold\"\n",
+    "spark.sql(f\"CREATE SCHEMA IF NOT EXISTS {SCHEMA_GOLD}\")\n",
+    "\n",
+    "print(f\"=== [GOLD] PRODUTO 5: RISCO E LONGEVIDADE FULL [{ENV.upper()}] ===\")\n",
+    "\n",
+    "df_est = spark.table(f\"{SCHEMA_SILVER}.silver_estabelecimentos\")\n",
+    "df_emp = spark.table(f\"{SCHEMA_SILVER}.silver_empresas\")\n",
     "\n",
     "df_longevidade = (\n",
     "    df_est.alias(\"est\")\n",
@@ -46,19 +56,16 @@
     "        F.col(\"est.dt_situacao_cadastral\"),\n",
     "        F.col(\"est.cd_situacao_cadastral\"),\n",
     "        F.col(\"est.cd_motivo_situacao_cadastral\"),\n",
-    "        # Idade operacional: calculada até a data de baixa/situação ou até hoje (se ativa)\n",
     "        F.when(\n",
     "            F.col(\"est.cd_situacao_cadastral\") == \"02\",\n",
     "            F.round(F.datediff(F.current_date(), F.col(\"est.dt_inicio_atividade\")) / 365.25, 2)\n",
     "        ).otherwise(\n",
     "            F.round(F.datediff(F.col(\"est.dt_situacao_cadastral\"), F.col(\"est.dt_inicio_atividade\")) / 365.25, 2)\n",
     "        ).alias(\"nu_idade_empresa_anos\"),\n",
-    "        # Flag de alteração cadastral recente (últimos 365 dias)\n",
     "        F.when(\n",
     "            F.datediff(F.current_date(), F.col(\"est.dt_situacao_cadastral\")) <= 365,\n",
     "            True\n",
     "        ).otherwise(False).alias(\"fl_alteracao_situacao_recente\"),\n",
-    "        # Presença de processo judicial/situação especial\n",
     "        F.col(\"emp.vl_capital_social\"),\n",
     "        F.col(\"est.sg_uf\"),\n",
     "        F.current_timestamp().alias(\"dt_carga_gold\")\n",
@@ -71,9 +78,9 @@
     "    .mode(\"overwrite\")\n",
     "    .option(\"overwriteSchema\", \"true\")\n",
     "    .partitionBy(\"sg_uf\")\n",
-    "    .saveAsTable(\"workspace.prod_gold.gold_dp_risco_longevidade_empresarial\")\n",
+    "    .saveAsTable(f\"{SCHEMA_GOLD}.gold_dp_risco_longevidade_empresarial\")\n",
     ")\n",
-    "print(\"-> workspace.prod_gold.gold_dp_risco_longevidade_empresarial gravada com sucesso.\")"
+    "print(f\"-> Tabela criada: {SCHEMA_GOLD}.gold_dp_risco_longevidade_empresarial\")"
    ]
   }
  ],

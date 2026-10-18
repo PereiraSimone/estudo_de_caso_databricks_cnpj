@@ -3,7 +3,6 @@ name: "Alice Data Contract CI"
 on:
   pull_request:
     branches:
-      - develop
       - homolog
       - main
     paths:
@@ -27,12 +26,12 @@ jobs:
       - name: "Instalar CLI Alice (Data Contract)"
         run: |
           python -m pip install --upgrade pip
-          pip install datacontract-cli[databricks]
+          pip install "datacontract-cli[databricks]"
 
       - name: "Lint dos Contratos JSON"
         run: |
           for contract in contracts/*.json; do
-            echo "Checando contrato: $contract"
+            echo "Checando sintaxe de: $contract"
             datacontract lint "$contract"
           done
 
@@ -40,5 +39,6 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
         run: |
           datacontract test contracts/gold_dp_cnpj_estabelecimentos_360.json

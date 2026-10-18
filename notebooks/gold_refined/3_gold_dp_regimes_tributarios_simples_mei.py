@@ -15,8 +15,21 @@
    },
    "outputs": [],
    "source": [
-    "df_smp = spark.table(\"workspace.default.silver_simples_nacional\")\n",
-    "df_emp = spark.table(\"workspace.default.silver_empresas\")\n",
+    "# Databricks notebook source\n",
+    "# COMMAND ----------\n",
+    "from pyspark.sql import functions as F\n",
+    "\n",
+    "dbutils.widgets.dropdown(\"env\", \"homolog\", [\"dev\", \"homolog\", \"prod\"], \"Ambiente Alvo\")\n",
+    "ENV = dbutils.widgets.get(\"env\")\n",
+    "\n",
+    "SCHEMA_SILVER = f\"workspace.{ENV}_silver\"\n",
+    "SCHEMA_GOLD = f\"workspace.{ENV}_gold\"\n",
+    "spark.sql(f\"CREATE SCHEMA IF NOT EXISTS {SCHEMA_GOLD}\")\n",
+    "\n",
+    "print(f\"=== [GOLD] PRODUTO 3: REGIMES TRIBUTÁRIOS FULL [{ENV.upper()}] ===\")\n",
+    "\n",
+    "df_smp = spark.table(f\"{SCHEMA_SILVER}.silver_simples_nacional\")\n",
+    "df_emp = spark.table(f\"{SCHEMA_SILVER}.silver_empresas\")\n",
     "\n",
     "df_gold_simples = (\n",
     "    df_smp.alias(\"smp\")\n",
@@ -30,7 +43,6 @@
     "        F.when(F.col(\"smp.fl_opcao_mei\") == \"S\", True).otherwise(False).alias(\"fl_optante_mei\"),\n",
     "        F.col(\"smp.dt_opcao_mei\"),\n",
     "        F.col(\"smp.dt_exclusao_mei\"),\n",
-    "        # Métricas derivadas de duração em dias\n",
     "        F.when(\n",
     "            F.col(\"smp.dt_exclusao_simples\").isNotNull(),\n",
     "            F.datediff(F.col(\"smp.dt_exclusao_simples\"), F.col(\"smp.dt_opcao_simples\"))\n",
@@ -48,9 +60,9 @@
     "    .format(\"delta\")\n",
     "    .mode(\"overwrite\")\n",
     "    .option(\"overwriteSchema\", \"true\")\n",
-    "    .saveAsTable(\"workspace.default.gold_dp_regimes_tributarios_simples_mei\")\n",
+    "    .saveAsTable(f\"{SCHEMA_GOLD}.gold_dp_regimes_tributarios_simples_mei\")\n",
     ")\n",
-    "print(\"-> workspace.default.gold_dp_regimes_tributarios_simples_mei gravada.\")"
+    "print(f\"-> Tabela criada: {SCHEMA_GOLD}.gold_dp_regimes_tributarios_simples_mei\")"
    ]
   }
  ],

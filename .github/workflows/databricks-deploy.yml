@@ -1,0 +1,45 @@
+name: "Databricks Deploy CD"
+
+on:
+  push:
+    branches:
+      - develop
+      - homolog
+      - main
+    paths:
+      - "notebooks/**"
+      - "contracts/**"
+      - "databricks.yml"
+
+jobs:
+  deploy:
+    name: "Deploy no Databricks Git Folder"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout do Repositório"
+        uses: actions/checkout@v4
+
+      - name: "Instalar Databricks CLI"
+        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: "Definir Ambiente Alvo"
+        id: target
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_name }}" = "homolog" ]; then
+            echo "env=homolog" >> $GITHUB_OUTPUT
+          else
+            echo "env=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Atualizar Databricks Git Folder (Repos)"
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          ENV="${{ steps.target.outputs.env }}"
+          REPO_PATH="/Workspace/Repos/${ENV}/estudo_de_caso_databricks_cnpj"
+          echo "Sincronizando branch ${{ github.ref_name }} em: $REPO_PATH"
+          databricks repos update "$REPO_PATH" --branch ${{ github.ref_name }} || true

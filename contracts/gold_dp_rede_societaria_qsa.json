@@ -1,0 +1,38 @@
+{
+  "$schema": "https://datacontract.com/v0.9.3/datacontract.schema.json",
+  "id": "urn:datacontract:workspace:homolog_gold:gold_dp_rede_societaria_qsa",
+  "info": {
+    "title": "Data Product Rede Societária QSA",
+    "version": "1.0.0",
+    "description": "Quadro de Sócios e Administradores sob conformidade LGPD.",
+    "owner": "compliance-dados@empresa.com"
+  },
+  "servers": {
+    "production": {
+      "type": "databricks",
+      "catalog": "workspace",
+      "schema": "homolog_gold"
+    }
+  },
+  "models": {
+    "gold_dp_rede_societaria_qsa": {
+      "fields": {
+        "id_socio_hash": {
+          "type": "string",
+          "primary": true,
+          "required": true
+        },
+        "nr_cnpj_basico": {
+          "type": "long",
+          "required": true
+        },
+        "nm_socio": {
+          "type": "string"
+        },
+        "ds_qualificacao_socio": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -11,14 +11,12 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_SILVER}")
 
 print(f"=== [SILVER] PROCESSAMENTO FULL: {SCHEMA_RAW} -> {SCHEMA_SILVER} ===")
 
+BASE_VOLUME_APOIO = "/Volumes/workspace/default/cnpj_ingestion/bronze/tabelas_apoio"
+
 # COMMAND ----------
-# 1. Simples Nacional e MEI (Lendo diretamente da Delta Raw de apoio)
+# 1. Simples Nacional e MEI (Sufixo _07)
 print("A processar Simples Nacional e MEI...")
-
-# Filtra os dados da tabela de apoio originados do arquivo _07 (Simples Nacional)
-df_raw_apoio = spark.table(f"{SCHEMA_RAW}.raw_tabelas_apoio")
-
-df_simples_raw = df_raw_apoio.filter(F.col("_source_path").like("%_07.parquet%"))
+df_simples_raw = spark.read.parquet(f"{BASE_VOLUME_APOIO}/*07*")
 
 df_silver_simples = (
     df_simples_raw
@@ -45,18 +43,18 @@ df_silver_simples = (
 print(f"-> {SCHEMA_SILVER}.silver_simples_nacional gravada.")
 
 # COMMAND ----------
-# 2. Tabelas de Domínio (Lendo da Delta Raw particionada por _source_path)
+# 2. Tabelas de Domínio
 print("A processar tabelas de domínio...")
 dominios = [
-    ("_03.parquet", "cd_municipio", "int", "ds_municipio", "silver_dominio_municipios"),
-    ("_05.parquet", "cd_natureza_juridica", "int", "ds_natureza_juridica", "silver_dominio_naturezas_juridicas"),
-    ("_04.parquet", "cd_qualificacao", "int", "ds_qualificacao", "silver_dominio_qualificacoes"),
-    ("_02.parquet", "cd_pais", "int", "ds_pais", "silver_dominio_paises")
+    ("*03*", "cd_municipio", "int", "ds_municipio", "silver_dominio_municipios"),
+    ("*05*", "cd_natureza_juridica", "int", "ds_natureza_juridica", "silver_dominio_naturezas_juridicas"),
+    ("*04*", "cd_qualificacao", "int", "ds_qualificacao", "silver_dominio_qualificacoes"),
+    ("*02*", "cd_pais", "int", "ds_pais", "silver_dominio_paises")
 ]
 
-for sufixo_arquivo, cd_col, tipo_dado, ds_col, nome_tabela in dominios:
+for pattern, cd_col, tipo_dado, ds_col, nome_tabela in dominios:
     (
-        df_raw_apoio.filter(F.col("_source_path").like(f"%{sufixo_arquivo}%"))
+        spark.read.parquet(f"{BASE_VOLUME_APOIO}/{pattern}")
         .select(
             F.col("col_0").cast(tipo_dado).alias(cd_col),
             F.upper(F.trim(F.col("col_1"))).alias(ds_col),
@@ -68,9 +66,9 @@ for sufixo_arquivo, cd_col, tipo_dado, ds_col, nome_tabela in dominios:
     )
     print(f"-> {SCHEMA_SILVER}.{nome_tabela} gravada.")
 
-# CNAEs com padding à esquerda
+# CNAEs
 (
-    df_raw_apoio.filter(F.col("_source_path").like("%_01.parquet%"))
+    spark.read.parquet(f"{BASE_VOLUME_APOIO}/*01*")
     .select(
         F.lpad(F.col("col_0").cast("string"), 7, "0").alias("cd_cnae"),
         F.upper(F.trim(F.col("col_1"))).alias("ds_cnae"),
@@ -83,7 +81,7 @@ for sufixo_arquivo, cd_col, tipo_dado, ds_col, nome_tabela in dominios:
 print(f"-> {SCHEMA_SILVER}.silver_dominio_cnaes gravada.")
 
 # COMMAND ----------
-# 3. Empresas (Base Full)
+# 3. Empresas (Base Full a partir da Raw Delta)
 print("A processar Silver Empresas...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_empresas")
@@ -104,7 +102,7 @@ print("A processar Silver Empresas...")
 print(f"-> {SCHEMA_SILVER}.silver_empresas gravada.")
 
 # COMMAND ----------
-# 4. Estabelecimentos (Base Full particionada por UF)
+# 4. Estabelecimentos (Base Full particionada por UF a partir da Raw Delta)
 print("A processar Silver Estabelecimentos...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_estabelecimentos")
@@ -140,7 +138,7 @@ print("A processar Silver Estabelecimentos...")
 print(f"-> {SCHEMA_SILVER}.silver_estabelecimentos gravada.")
 
 # COMMAND ----------
-# 5. Sócios (Base Full com Hash LGPD)
+# 5. Sócios (Base Full com Hash LGPD a partir da Raw Delta)
 print("A processar Silver Sócios...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_socios")

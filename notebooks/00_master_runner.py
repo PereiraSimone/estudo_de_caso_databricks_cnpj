@@ -3,7 +3,6 @@
 dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")
 ENV = dbutils.widgets.get("env")
 
-# Tempo limite de 2 horas para processamento completo dos Parquets
 timeout = 7200
 
 print("=" * 65)
@@ -13,12 +12,12 @@ print("=" * 65)
 # COMMAND ----------
 # 1. Soft Raw Ingestion
 print("\n>>> [1/3] A executar Camada Raw (Full)...")
-dbutils.notebook.run("soft_raw/1. Ingestao Delta Soft Raw", timeout, {"env": ENV})
+dbutils.notebook.run("soft_raw/1_ingestao_delta_soft_raw", timeout, {"env": ENV})
 
 # COMMAND ----------
 # 2. Silver Trusted Tier
 print("\n>>> [2/3] A executar Camada Silver (Full)...")
-dbutils.notebook.run("silver_trusted/2. Tratamento e Higienizacao Silver", timeout, {"env": ENV})
+dbutils.notebook.run("silver_trusted/2_tratamento_higienizacao_silver", timeout, {"env": ENV})
 
 # COMMAND ----------
 # 3. Gold Refined Tier

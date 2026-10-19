@@ -1,5 +1,8 @@
 # Databricks notebook source
-# COMMAND ----------
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 from pyspark.sql import functions as F
 
 dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")
@@ -116,13 +119,13 @@ print("Processando Silver: Empresas...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_empresas")
     .select(
-        F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
-        F.upper(F.trim(F.col("col_1"))).alias("nm_razao_social"),
-        F.col("col_2").cast("int").alias("cd_natureza_juridica"),
-        F.col("col_3").cast("int").alias("cd_qualificacao_responsavel"),
-        F.regexp_replace(F.col("col_4"), ",", ".").cast("decimal(18,2)").alias("vl_capital_social"),
-        F.col("col_5").cast("string").alias("cd_porte_empresa"),
-        F.col("col_6").cast("string").alias("ds_ente_federativo_responsavel"),
+        F.col("cnpj_basico").cast("bigint").alias("nr_cnpj_basico"),
+        F.upper(F.trim(F.col("razao_social"))).alias("nm_razao_social"),
+        F.col("natureza_juridica").cast("int").alias("cd_natureza_juridica"),
+        F.col("qualificacao_responsavel").cast("int").alias("cd_qualificacao_responsavel"),
+        F.regexp_replace(F.col("capital_social"), ",", ".").cast("decimal(18,2)").alias("vl_capital_social"),
+        F.col("porte_empresa").cast("string").alias("cd_porte_empresa"),
+        F.col("ente_federativo_responsavel").cast("string").alias("ds_ente_federativo_responsavel"),
         F.current_timestamp().alias("dt_silver_update")
     )
     .dropDuplicates(["nr_cnpj_basico"])

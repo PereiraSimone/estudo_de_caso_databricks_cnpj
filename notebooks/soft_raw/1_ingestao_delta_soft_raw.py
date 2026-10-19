@@ -1,5 +1,4 @@
 # Databricks notebook source
-# COMMAND ----------
 from pyspark.sql import functions as F
 
 dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")

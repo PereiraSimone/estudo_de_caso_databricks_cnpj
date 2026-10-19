@@ -1,5 +1,8 @@
 # Databricks notebook source
-# COMMAND ----------
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")
 ENV = dbutils.widgets.get("env")
 
@@ -10,16 +13,19 @@ print(f"  EXECUTANDO ESTEIRA FULL MEDALLION - AMBIENTE: [{ENV.upper()}]")
 print("=" * 65)
 
 # COMMAND ----------
+
 # 1. Soft Raw Ingestion
 print("\n>>> [1/3] A executar Camada Raw (Full)...")
-dbutils.notebook.run("soft_raw/1_ingestao_delta_soft_raw", timeout, {"env": ENV})
+dbutils.notebook.run("/Users/simone.pereira.pinto@usp.br/estudo_de_caso_databricks_cnpj/notebooks/soft_raw/1_ingestao_delta_soft_raw", timeout, {"env": ENV})
 
 # COMMAND ----------
+
 # 2. Silver Trusted Tier
 print("\n>>> [2/3] A executar Camada Silver (Full)...")
 dbutils.notebook.run("silver_trusted/2_tratamento_higienizacao_silver", timeout, {"env": ENV})
 
 # COMMAND ----------
+
 # 3. Gold Refined Tier
 print("\n>>> [3/3] A consolidar Produtos de Dados Gold (Full)...")
 dbutils.notebook.run("gold_refined/1_gold_dp_cnpj_estabelecimentos_360", timeout, {"env": ENV})

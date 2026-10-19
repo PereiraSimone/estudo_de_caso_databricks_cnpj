@@ -1,5 +1,4 @@
 # Databricks notebook source
-# COMMAND ----------
 from pyspark.sql import functions as F
 
 # 1. Parâmetro do ambiente de execução
@@ -15,6 +14,7 @@ print(f"=== [RAW] INICIANDO INGESTÃO INTEGRAL (FULL) NO ESQUEMA: {SCHEMA_RAW} =
 BASE_VOLUME = "/Volumes/workspace/default/cnpj_ingestion/bronze"
 
 # COMMAND ----------
+
 # 3. Ingestão Full das tabelas estruturais
 entidades = ["empresas", "estabelecimentos", "socios"]
 
@@ -35,12 +35,13 @@ for entidade in entidades:
     print(f"-> Tabela criada: {SCHEMA_RAW}.raw_{entidade}")
 
 # COMMAND ----------
+
 # 4. Ingestão Full das tabelas de apoio
 print("A carregar tabelas de apoio auxiliares (FULL)...")
 caminho_apoio = f"{BASE_VOLUME}/tabelas_apoio"
 
 (
-    spark.read.parquet(caminho_apoio)
+    spark.read.option("mergeSchema", "true").parquet(caminho_apoio)
     .withColumn("_ingested_at", F.current_timestamp())
     .withColumn("_source_path", F.col("_metadata.file_path"))
     .write

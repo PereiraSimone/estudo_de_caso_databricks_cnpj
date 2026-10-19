@@ -53,12 +53,16 @@
       }
     }
   },
-  "quality": [
-    {
-      "type": "sql",
-      "name": "check_nr_cnpj_not_null",
-      "query": "SELECT count(*) FROM workspace.homolog_gold.gold_dp_cnpj_estabelecimentos_360 WHERE nr_cnpj IS NULL",
-      "mustBe": 0
-    }
-  ]
-}   
+  "quality": {
+    "type": "custom",
+    "rules": [
+      {
+        "name": "check_nr_cnpj_not_null",
+        "description": "Garante que o campo nr_cnpj nao contenha valores nulos",
+        "type": "sql",
+        "query": "SELECT count(*) FROM workspace.homolog_gold.gold_dp_cnpj_estabelecimentos_360 WHERE nr_cnpj IS NULL",
+        "mustBe": 0
+      }
+    ]
+  }
+}

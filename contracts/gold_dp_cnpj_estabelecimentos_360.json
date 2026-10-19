@@ -1,0 +1,68 @@
+{
+  "$schema": "https://datacontract.com/v0.9.3/datacontract.schema.json",
+  "id": "urn:datacontract:workspace:homolog_gold:gold_dp_cnpj_estabelecimentos_360",
+  "info": {
+    "title": "Data Product CNPJ Estabelecimentos 360",
+    "version": "1.0.0",
+    "description": "Contrato cadastral de estabelecimentos para esteira de governança.",
+    "owner": "eng-dados@empresa.com",
+    "domain": "Cadastro Corporativo"
+  },
+  "servers": {
+    "homolog": {
+      "type": "databricks",
+      "catalog": "workspace",
+      "schema": "homolog_gold"
+    }
+  },
+  "models": {
+    "gold_dp_cnpj_estabelecimentos_360": {
+      "fields": {
+        "nr_cnpj": {
+          "type": "long",
+          "primary": true,
+          "required": true,
+          "description": "CNPJ formatado como inteiro longo para teste de contrato baseline v1."
+        },
+        "nr_cnpj_basico": {
+          "type": "long",
+          "required": true
+        },
+        "nm_razao_social": {
+          "type": "string",
+          "required": true
+        },
+        "tp_estabelecimento": {
+          "type": "string"
+        },
+        "ds_situacao_cadastral": {
+          "type": "string"
+        },
+        "vl_capital_social": {
+          "type": "decimal"
+        },
+        "fl_simples_nacional_ativo": {
+          "type": "boolean"
+        },
+        "fl_mei_ativo": {
+          "type": "boolean"
+        },
+        "sg_uf": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "quality": {
+    "type": "custom",
+    "rules": [
+      {
+        "name": "check_nr_cnpj_not_null",
+        "description": "Garante que o campo nr_cnpj nao contenha valores nulos",
+        "type": "sql",
+        "query": "SELECT count(*) FROM workspace.homolog_gold.gold_dp_cnpj_estabelecimentos_360 WHERE nr_cnpj IS NULL",
+        "mustBe": 0
+      }
+    ]
+  }
+}

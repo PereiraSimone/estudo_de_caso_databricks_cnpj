@@ -31,14 +31,21 @@ jobs:
       - name: "Lint dos Contratos JSON"
         run: |
           for contract in contracts/*.json; do
-            echo "A validar sintaxe de: $contract"
+            echo "Validando sintaxe de: $contract"
             datacontract lint "$contract"
           done
 
       - name: "Testar Contrato contra Databricks (Homolog)"
         env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-          DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+          RAW_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATACONTRACT_DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATACONTRACT_DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
         run: |
+          # Higieniza o host removendo https:// e barras finais
+          CLEAN_HOSTNAME=$(echo "$RAW_HOST" | sed -e 's|^https://||' -e 's|/$||')
+          export DATACONTRACT_DATABRICKS_SERVER_HOSTNAME="$CLEAN_HOSTNAME"
+
+          echo "Executando teste no Databricks Host: $DATACONTRACT_DATABRICKS_SERVER_HOSTNAME"
+
+          # Executa o teste de contrato contra o servidor configurado
           datacontract test contracts/gold_dp_cnpj_estabelecimentos_360.json

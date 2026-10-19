@@ -1,5 +1,8 @@
 # Databricks notebook source
-# COMMAND ----------
+# /// script
+# [tool.databricks.environment]
+# environment_version = "6"
+# ///
 from pyspark.sql import functions as F
 
 dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")
@@ -12,6 +15,7 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_SILVER}")
 print(f"=== [SILVER] PROCESSAMENTO FULL: {SCHEMA_RAW} -> {SCHEMA_SILVER} ===")
 
 # COMMAND ----------
+
 # 1. Simples Nacional e MEI
 print("A higienizar Simples Nacional e MEI...")
 (
@@ -33,6 +37,7 @@ print("A higienizar Simples Nacional e MEI...")
 print(f"-> {SCHEMA_SILVER}.silver_simples_nacional criada.")
 
 # COMMAND ----------
+
 # 2. Tabelas de Domínio
 print("A higienizar domínios...")
 
@@ -103,18 +108,20 @@ print("A higienizar domínios...")
 print("-> Tabelas de Domínio criadas.")
 
 # COMMAND ----------
+
+# DBTITLE 1,3. Empresas
 # 3. Empresas
 print("A higienizar Empresas...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_empresas")
     .select(
-        F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
-        F.upper(F.trim(F.col("col_1"))).alias("nm_razao_social"),
-        F.col("col_2").cast("int").alias("cd_natureza_juridica"),
-        F.col("col_3").cast("int").alias("cd_qualificacao_responsavel"),
-        F.regexp_replace(F.col("col_4"), ",", ".").cast("decimal(18,2)").alias("vl_capital_social"),
-        F.col("col_5").cast("string").alias("cd_porte_empresa"),
-        F.col("col_6").cast("string").alias("ds_ente_federativo_responsavel"),
+        F.col("cnpj_basico").cast("bigint").alias("nr_cnpj_basico"),
+        F.upper(F.trim(F.col("razao_social"))).alias("nm_razao_social"),
+        F.col("natureza_juridica").cast("int").alias("cd_natureza_juridica"),
+        F.col("qualificacao_responsavel").cast("int").alias("cd_qualificacao_responsavel"),
+        F.regexp_replace(F.col("capital_social"), ",", ".").cast("decimal(18,2)").alias("vl_capital_social"),
+        F.col("porte_empresa").cast("string").alias("cd_porte_empresa"),
+        F.col("ente_federativo_responsavel").cast("string").alias("ds_ente_federativo_responsavel"),
         F.current_timestamp().alias("dt_silver_update")
     )
     .dropDuplicates(["nr_cnpj_basico"])
@@ -124,17 +131,15 @@ print("A higienizar Empresas...")
 print(f"-> {SCHEMA_SILVER}.silver_empresas criada.")
 
 # COMMAND ----------
+
+# DBTITLE 1,4. Estabelecimentos
 # 4. Estabelecimentos
 print("A higienizar Estabelecimentos...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_estabelecimentos")
     .select(
         F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
-        F.concat(
-            F.lpad(F.col("col_0").cast("string"), 8, "0"),
-            F.lpad(F.col("col_1").cast("string"), 4, "0"),
-            F.lpad(F.col("col_2").cast("string"), 2, "0")
-        ).cast("bigint").alias("nr_cnpj_completo"),
+        F.expr("try_cast(concat(lpad(col_0, 8, '0'), lpad(col_1, 4, '0'), lpad(col_2, 2, '0')) as bigint)").alias("nr_cnpj_completo"),
         F.col("col_3").cast("int").alias("cd_identificador_matriz_filial"),
         F.upper(F.trim(F.col("col_4"))).alias("nm_fantasia"),
         F.col("col_5").cast("string").alias("cd_situacao_cadastral"),
@@ -149,7 +154,7 @@ print("A higienizar Estabelecimentos...")
         F.col("col_18").cast("string").alias("nm_bairro"),
         F.col("col_19").cast("string").alias("nr_cep"),
         F.col("col_20").cast("string").alias("sg_uf"),
-        F.col("col_21").cast("int").alias("cd_municipio"),
+        F.expr("try_cast(col_21 as int)").alias("cd_municipio"),
         F.current_timestamp().alias("dt_silver_update")
     )
     .dropDuplicates(["nr_cnpj_completo"])
@@ -160,6 +165,7 @@ print("A higienizar Estabelecimentos...")
 print(f"-> {SCHEMA_SILVER}.silver_estabelecimentos criada.")
 
 # COMMAND ----------
+
 # 5. Sócios (Conformidade com a LGPD via Hashing)
 print("A higienizar Sócios...")
 (

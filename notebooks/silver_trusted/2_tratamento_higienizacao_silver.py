@@ -1,8 +1,5 @@
 # Databricks notebook source
-# /// script
-# [tool.databricks.environment]
-# environment_version = "6"
-# ///
+# COMMAND ----------
 from pyspark.sql import functions as F
 
 dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")
@@ -16,11 +13,9 @@ print(f"=== [SILVER] PROCESSAMENTO FULL: {SCHEMA_RAW} -> {SCHEMA_SILVER} ===")
 
 # COMMAND ----------
 # 1. Simples Nacional e MEI
-print("Processando Silver: Simples Nacional...")
-df_simples_raw = spark.table(f"{SCHEMA_RAW}.raw_apoio_simples")
-
-df_silver_simples = (
-    df_simples_raw
+print("A higienizar Simples Nacional e MEI...")
+(
+    spark.table(f"{SCHEMA_RAW}.raw_apoio_simples")
     .select(
         F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
         F.upper(F.trim(F.col("col_1"))).alias("fl_opcao_simples"),
@@ -32,20 +27,14 @@ df_silver_simples = (
         F.current_timestamp().alias("dt_silver_update")
     )
     .dropDuplicates(["nr_cnpj_basico"])
-)
-
-(
-    df_silver_simples.write
-    .format("delta")
-    .mode("overwrite")
-    .option("overwriteSchema", "true")
+    .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_simples_nacional")
 )
-print(f"-> {SCHEMA_SILVER}.silver_simples_nacional OK.")
+print(f"-> {SCHEMA_SILVER}.silver_simples_nacional criada.")
 
 # COMMAND ----------
-# 2. Tabelas de Domínio (Lendo direto das Deltas Raw dedicadas)
-print("Processando Silver: Domínios...")
+# 2. Tabelas de Domínio
+print("A higienizar domínios...")
 
 # Municípios
 (
@@ -73,7 +62,7 @@ print("Processando Silver: Domínios...")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_dominio_naturezas_juridicas")
 )
 
-# Qualificações de Sócios
+# Qualificações
 (
     spark.table(f"{SCHEMA_RAW}.raw_apoio_qualificacoes")
     .select(
@@ -99,7 +88,7 @@ print("Processando Silver: Domínios...")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_dominio_paises")
 )
 
-# CNAEs
+# CNAEs com preenchimento de zeros à esquerda
 (
     spark.table(f"{SCHEMA_RAW}.raw_apoio_cnaes")
     .select(
@@ -111,32 +100,32 @@ print("Processando Silver: Domínios...")
     .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_dominio_cnaes")
 )
-print("-> Tabelas de Domínio OK.")
+print("-> Tabelas de Domínio criadas.")
 
 # COMMAND ----------
 # 3. Empresas
-print("Processando Silver: Empresas...")
+print("A higienizar Empresas...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_empresas")
     .select(
-        F.col("cnpj_basico").cast("bigint").alias("nr_cnpj_basico"),
-        F.upper(F.trim(F.col("razao_social"))).alias("nm_razao_social"),
-        F.col("natureza_juridica").cast("int").alias("cd_natureza_juridica"),
-        F.col("qualificacao_responsavel").cast("int").alias("cd_qualificacao_responsavel"),
-        F.regexp_replace(F.col("capital_social"), ",", ".").cast("decimal(18,2)").alias("vl_capital_social"),
-        F.col("porte_empresa").cast("string").alias("cd_porte_empresa"),
-        F.col("ente_federativo_responsavel").cast("string").alias("ds_ente_federativo_responsavel"),
+        F.col("col_0").cast("bigint").alias("nr_cnpj_basico"),
+        F.upper(F.trim(F.col("col_1"))).alias("nm_razao_social"),
+        F.col("col_2").cast("int").alias("cd_natureza_juridica"),
+        F.col("col_3").cast("int").alias("cd_qualificacao_responsavel"),
+        F.regexp_replace(F.col("col_4"), ",", ".").cast("decimal(18,2)").alias("vl_capital_social"),
+        F.col("col_5").cast("string").alias("cd_porte_empresa"),
+        F.col("col_6").cast("string").alias("ds_ente_federativo_responsavel"),
         F.current_timestamp().alias("dt_silver_update")
     )
     .dropDuplicates(["nr_cnpj_basico"])
     .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_empresas")
 )
-print(f"-> {SCHEMA_SILVER}.silver_empresas OK.")
+print(f"-> {SCHEMA_SILVER}.silver_empresas criada.")
 
 # COMMAND ----------
 # 4. Estabelecimentos
-print("Processando Silver: Estabelecimentos...")
+print("A higienizar Estabelecimentos...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_estabelecimentos")
     .select(
@@ -168,11 +157,11 @@ print("Processando Silver: Estabelecimentos...")
     .partitionBy("sg_uf")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_estabelecimentos")
 )
-print(f"-> {SCHEMA_SILVER}.silver_estabelecimentos OK.")
+print(f"-> {SCHEMA_SILVER}.silver_estabelecimentos criada.")
 
 # COMMAND ----------
-# 5. Sócios (Tratamento LGPD)
-print("Processando Silver: Sócios...")
+# 5. Sócios (Conformidade com a LGPD via Hashing)
+print("A higienizar Sócios...")
 (
     spark.table(f"{SCHEMA_RAW}.raw_socios")
     .select(
@@ -191,5 +180,5 @@ print("Processando Silver: Sócios...")
     .write.format("delta").mode("overwrite").option("overwriteSchema", "true")
     .saveAsTable(f"{SCHEMA_SILVER}.silver_socios")
 )
-print(f"-> {SCHEMA_SILVER}.silver_socios OK.")
-print(f"=== [SILVER] ETAPA CONCLUÍDA NO SCHEMA {SCHEMA_SILVER} ===")
+print(f"-> {SCHEMA_SILVER}.silver_socios criada.")
+print(f"=== [SILVER] PROCESSAMENTO CONCLUÍDO: {SCHEMA_SILVER} ===")

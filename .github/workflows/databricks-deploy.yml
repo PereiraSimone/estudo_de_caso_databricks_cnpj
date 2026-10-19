@@ -1,45 +1,44 @@
-name: "Databricks Deploy CD"
+name: "Alice Data Contract CI"
 
 on:
-  push:
+  pull_request:
     branches:
-      - develop
       - homolog
       - main
     paths:
-      - "notebooks/**"
       - "contracts/**"
-      - "databricks.yml"
+      - "notebooks/**"
 
 jobs:
-  deploy:
-    name: "Deploy no Databricks Git Folder"
+  validate-contracts:
+    name: "Validar Contratos e Breaking Changes"
     runs-on: ubuntu-latest
 
     steps:
       - name: "Checkout do Repositório"
         uses: actions/checkout@v4
 
-      - name: "Instalar Databricks CLI"
-        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      - name: "Configurar Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-      - name: "Definir Ambiente Alvo"
-        id: target
+      - name: "Instalar CLI Alice (Data Contract)"
         run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "env=prod" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref_name }}" = "homolog" ]; then
-            echo "env=homolog" >> $GITHUB_OUTPUT
-          else
-            echo "env=dev" >> $GITHUB_OUTPUT
-          fi
+          python -m pip install --upgrade pip
+          pip install "datacontract-cli[databricks]"
 
-      - name: "Atualizar Databricks Git Folder (Repos)"
+      - name: "Lint dos Contratos JSON"
+        run: |
+          for contract in contracts/*.json; do
+            echo "A validar sintaxe de: $contract"
+            datacontract lint "$contract"
+          done
+
+      - name: "Testar Contrato contra Databricks (Homolog)"
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
         run: |
-          ENV="${{ steps.target.outputs.env }}"
-          REPO_PATH="/Workspace/Repos/${ENV}/estudo_de_caso_databricks_cnpj"
-          echo "Sincronizando branch ${{ github.ref_name }} em: $REPO_PATH"
-          databricks repos update "$REPO_PATH" --branch ${{ github.ref_name }} || true
+          datacontract test contracts/gold_dp_cnpj_estabelecimentos_360.json

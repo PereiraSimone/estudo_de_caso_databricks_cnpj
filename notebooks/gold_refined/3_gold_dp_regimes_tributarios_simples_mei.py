@@ -1,91 +1,48 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 0,
-   "metadata": {
-    "application/vnd.databricks.v1+cell": {
-     "cellMetadata": {},
-     "inputWidgets": {},
-     "nuid": "ce171632-8028-43a0-b382-fbbce604f674",
-     "showTitle": false,
-     "tableResultSettingsMap": {},
-     "title": ""
-    }
-   },
-   "outputs": [],
-   "source": [
-    "# Databricks notebook source\n",
-    "# COMMAND ----------\n",
-    "from pyspark.sql import functions as F\n",
-    "\n",
-    "dbutils.widgets.dropdown(\"env\", \"homolog\", [\"dev\", \"homolog\", \"prod\"], \"Ambiente Alvo\")\n",
-    "ENV = dbutils.widgets.get(\"env\")\n",
-    "\n",
-    "SCHEMA_SILVER = f\"workspace.{ENV}_silver\"\n",
-    "SCHEMA_GOLD = f\"workspace.{ENV}_gold\"\n",
-    "spark.sql(f\"CREATE SCHEMA IF NOT EXISTS {SCHEMA_GOLD}\")\n",
-    "\n",
-    "print(f\"=== [GOLD] PRODUTO 3: REGIMES TRIBUTÁRIOS FULL [{ENV.upper()}] ===\")\n",
-    "\n",
-    "df_smp = spark.table(f\"{SCHEMA_SILVER}.silver_simples_nacional\")\n",
-    "df_emp = spark.table(f\"{SCHEMA_SILVER}.silver_empresas\")\n",
-    "\n",
-    "df_gold_simples = (\n",
-    "    df_smp.alias(\"smp\")\n",
-    "    .join(df_emp.alias(\"emp\"), \"nr_cnpj_basico\", \"inner\")\n",
-    "    .select(\n",
-    "        F.col(\"smp.nr_cnpj_basico\"),\n",
-    "        F.col(\"emp.nm_razao_social\"),\n",
-    "        F.when(F.col(\"smp.fl_opcao_simples\") == \"S\", True).otherwise(False).alias(\"fl_optante_simples\"),\n",
-    "        F.col(\"smp.dt_opcao_simples\"),\n",
-    "        F.col(\"smp.dt_exclusao_simples\"),\n",
-    "        F.when(F.col(\"smp.fl_opcao_mei\") == \"S\", True).otherwise(False).alias(\"fl_optante_mei\"),\n",
-    "        F.col(\"smp.dt_opcao_mei\"),\n",
-    "        F.col(\"smp.dt_exclusao_mei\"),\n",
-    "        F.when(\n",
-    "            F.col(\"smp.dt_exclusao_simples\").isNotNull(),\n",
-    "            F.datediff(F.col(\"smp.dt_exclusao_simples\"), F.col(\"smp.dt_opcao_simples\"))\n",
-    "        ).when(\n",
-    "            F.col(\"smp.fl_opcao_simples\") == \"S\",\n",
-    "            F.datediff(F.current_date(), F.col(\"smp.dt_opcao_simples\"))\n",
-    "        ).otherwise(0).alias(\"nu_dias_permanencia_simples\"),\n",
-    "        F.col(\"emp.vl_capital_social\"),\n",
-    "        F.current_timestamp().alias(\"dt_carga_gold\")\n",
-    "    )\n",
-    ")\n",
-    "\n",
-    "(\n",
-    "    df_gold_simples.write\n",
-    "    .format(\"delta\")\n",
-    "    .mode(\"overwrite\")\n",
-    "    .option(\"overwriteSchema\", \"true\")\n",
-    "    .saveAsTable(f\"{SCHEMA_GOLD}.gold_dp_regimes_tributarios_simples_mei\")\n",
-    ")\n",
-    "print(f\"-> Tabela criada: {SCHEMA_GOLD}.gold_dp_regimes_tributarios_simples_mei\")"
-   ]
-  }
- ],
- "metadata": {
-  "application/vnd.databricks.v1+notebook": {
-   "computePreferences": null,
-   "dashboards": [],
-   "environmentMetadata": {
-    "base_environment": "",
-    "environment_version": "6"
-   },
-   "inputWidgetPreferences": null,
-   "language": "python",
-   "notebookMetadata": {
-    "pythonIndentUnit": 4
-   },
-   "notebookName": "3. Produto 3: gold_dp_regimes_tributarios_simples_mei (Inteligência Tributária)",
-   "widgets": {}
-  },
-  "language_info": {
-   "name": "python"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 0
-}
+# Databricks notebook source
+# COMMAND ----------
+from pyspark.sql import functions as F
+
+dbutils.widgets.dropdown("env", "homolog", ["dev", "homolog", "prod"], "Ambiente Alvo")
+ENV = dbutils.widgets.get("env")
+
+SCHEMA_SILVER = f"workspace.{ENV}_silver"
+SCHEMA_GOLD = f"workspace.{ENV}_gold"
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_GOLD}")
+
+print(f"=== [GOLD] PRODUTO 3: REGIMES TRIBUTÁRIOS [{ENV.upper()}] ===")
+
+df_smp = spark.table(f"{SCHEMA_SILVER}.silver_simples_nacional")
+df_emp = spark.table(f"{SCHEMA_SILVER}.silver_empresas")
+
+df_gold_simples = (
+    df_smp.alias("smp")
+    .join(df_emp.alias("emp"), "nr_cnpj_basico", "inner")
+    .select(
+        F.col("smp.nr_cnpj_basico"),
+        F.col("emp.nm_razao_social"),
+        F.when(F.col("smp.fl_opcao_simples") == "S", True).otherwise(False).alias("fl_optante_simples"),
+        F.col("smp.dt_opcao_simples"),
+        F.col("smp.dt_exclusao_simples"),
+        F.when(F.col("smp.fl_opcao_mei") == "S", True).otherwise(False).alias("fl_optante_mei"),
+        F.col("smp.dt_opcao_mei"),
+        F.col("smp.dt_exclusao_mei"),
+        F.when(
+            F.col("smp.dt_exclusao_simples").isNotNull(),
+            F.datediff(F.col("smp.dt_exclusao_simples"), F.col("smp.dt_opcao_simples"))
+        ).when(
+            F.col("smp.fl_opcao_simples") == "S",
+            F.datediff(F.current_date(), F.col("smp.dt_opcao_simples"))
+        ).otherwise(0).alias("nu_dias_permanencia_simples"),
+        F.col("emp.vl_capital_social"),
+        F.current_timestamp().alias("dt_carga_gold")
+    )
+)
+
+(
+    df_gold_simples.write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .saveAsTable(f"{SCHEMA_GOLD}.gold_dp_regimes_tributarios_simples_mei")
+)
+print(f"-> {SCHEMA_GOLD}.gold_dp_regimes_tributarios_simples_mei criada.")

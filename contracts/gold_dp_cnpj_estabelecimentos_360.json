@@ -22,7 +22,7 @@
           "type": "long",
           "primary": true,
           "required": true,
-          "description": "CNPJ formatado como inteiro longo para o baseline v1."
+          "description": "CNPJ formatado como inteiro longo para teste de contrato baseline v1."
         },
         "nr_cnpj_basico": {
           "type": "long",
@@ -61,4 +61,4 @@
       "mustBe": 0
     }
   ]
-}
+}   

@@ -1,18 +1,18 @@
 {
-  "$schema": "https://datacontract.com/v0.9.3/datacontract.schema.json",
+  "dataContractSpecification": "0.9.3",
   "id": "urn:datacontract:workspace:homolog_gold:gold_dp_cnpj_estabelecimentos_360",
   "info": {
     "title": "Data Product CNPJ Estabelecimentos 360",
     "version": "1.0.0",
-    "description": "Contrato cadastral de estabelecimentos para esteira de governança.",
-    "owner": "eng-dados@empresa.com",
-    "domain": "Cadastro Corporativo"
+    "description": "Contrato cadastral de estabelecimentos para esteira de governanca.",
+    "owner": "eng-dados@empresa.com"
   },
   "servers": {
     "homolog": {
       "type": "databricks",
       "catalog": "workspace",
-      "schema": "homolog_gold"
+      "schema": "homolog_gold",
+      "port": 443
     }
   },
   "models": {
@@ -21,8 +21,7 @@
         "nr_cnpj": {
           "type": "long",
           "primary": true,
-          "required": true,
-          "description": "CNPJ formatado como inteiro longo para teste de contrato baseline v1."
+          "required": true
         },
         "nr_cnpj_basico": {
           "type": "long",
@@ -52,17 +51,5 @@
         }
       }
     }
-  },
-  "quality": {
-    "type": "custom",
-    "rules": [
-      {
-        "name": "check_nr_cnpj_not_null",
-        "description": "Garante que o campo nr_cnpj nao contenha valores nulos",
-        "type": "sql",
-        "query": "SELECT count(*) FROM workspace.homolog_gold.gold_dp_cnpj_estabelecimentos_360 WHERE nr_cnpj IS NULL",
-        "mustBe": 0
-      }
-    ]
   }
 }

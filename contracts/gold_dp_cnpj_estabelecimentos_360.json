@@ -1,0 +1,55 @@
+{
+  "dataContractSpecification": "0.9.3",
+  "id": "urn:datacontract:workspace:homolog_gold:gold_dp_cnpj_estabelecimentos_360",
+  "info": {
+    "title": "Data Product CNPJ Estabelecimentos 360",
+    "version": "1.0.0",
+    "description": "Contrato cadastral de estabelecimentos para esteira de governanca.",
+    "owner": "eng-dados@empresa.com"
+  },
+  "servers": {
+    "homolog": {
+      "type": "databricks",
+      "catalog": "workspace",
+      "schema": "homolog_gold",
+      "port": 443
+    }
+  },
+  "models": {
+    "gold_dp_cnpj_estabelecimentos_360": {
+      "fields": {
+        "nr_cnpj": {
+          "type": "long",
+          "primary": true,
+          "required": true
+        },
+        "nr_cnpj_basico": {
+          "type": "long",
+          "required": true
+        },
+        "nm_razao_social": {
+          "type": "string",
+          "required": true
+        },
+        "tp_estabelecimento": {
+          "type": "string"
+        },
+        "ds_situacao_cadastral": {
+          "type": "string"
+        },
+        "vl_capital_social": {
+          "type": "decimal"
+        },
+        "fl_simples_nacional_ativo": {
+          "type": "boolean"
+        },
+        "fl_mei_ativo": {
+          "type": "boolean"
+        },
+        "sg_uf": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

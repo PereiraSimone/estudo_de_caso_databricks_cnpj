@@ -1,0 +1,15 @@
+bundle:
+  name: estudo_de_caso_databricks_cnpj
+
+resources:
+  jobs:
+    medallion_pipeline_cnpj:
+      name: "[CNPJ] Medallion Pipeline & Alice Validation"
+      schedule:
+        quartz_cron_expression: "0 0 4 * * ?"
+        timezone_id: "America/Sao_Paulo"
+      tasks:
+        - task_key: master_orchestrator
+          notebook_task:
+            notebook_path: notebooks/00_master_runner.py
+            source: GIT

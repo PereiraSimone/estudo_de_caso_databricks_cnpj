@@ -43,8 +43,12 @@ df_gold_360 = (
     )
 )
 
+# Antes da escrita final na tabela gold_dp_cnpj_estabelecimentos_360:
+df_gold_estabelecimentos = df_gold_estabelecimentos.filter(
+    F.col("nr_cnpj").isNotNull() & (F.trim(F.col("nr_cnpj")) != "")
+)
 (
-    df_gold_360.write
+    df_gold_estabelecimentos.write
     .format("delta")
     .mode("overwrite")
     .option("overwriteSchema", "true")

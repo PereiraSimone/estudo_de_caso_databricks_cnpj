@@ -1,0 +1,56 @@
+spec: odcs
+version: 3.0.0
+id: urn:datacontract:gold:score_saude_e_propensao_pj
+info:
+  title: Modelagem e Scores de Propensão e Risco PJ
+  version: 2.1.0
+  description: Tabela analítica agregada com variáveis de entrada e saída para machine learning.
+  owner: Data Science / ALICE ML Governance
+servers:
+  databricks:
+    type: databricks
+    host: ${DATABRICKS_HOST}
+    database: default
+models:
+  gold_dp_score_saude_e_propensao_pj:
+    description: Scores preditivos e métricas agregadas por empresa
+    type: table
+    fields:
+      nr_cnpj:
+        type: string
+        required: true
+        unique: true
+        description: Identificador único da entidade
+      cnpj_basico:
+        type: string
+        required: true
+      score_saude_operacional:
+        type: double
+        required: true
+        description: Indicador de longevidade e saúde cadastral [0.0 a 1.0]
+      score_propensao_credito:
+        type: double
+        required: true
+        description: Score preditivo gerado pelo modelo
+      categoria_risco:
+        type: string
+        required: true
+        description: Classificação de risco (BAIXO, MEDIO, ALTO)
+      flag_simples_nacional:
+        type: boolean
+        required: true
+      flag_mei:
+        type: boolean
+        required: true
+      tempo_atividade_anos:
+        type: double
+        required: false
+      qtd_socios_ativos:
+        type: integer
+        required: true
+      fl_ativo_ans:
+        type: boolean
+        required: false
+      data_processamento:
+        type: timestamp
+        required: true

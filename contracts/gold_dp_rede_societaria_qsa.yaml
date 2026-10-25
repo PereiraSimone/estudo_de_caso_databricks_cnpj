@@ -1,0 +1,53 @@
+spec: odcs
+version: 3.0.0
+id: urn:datacontract:gold:rede_societaria_qsa
+info:
+  title: Rede Societária e Quadro de Sócios e Administradores (QSA)
+  version: 2.1.0
+  description: Tabela Gold mapeando sócios, administradores e relacionamentos societários de PJ.
+  owner: Data Engineering / ALICE Platform
+servers:
+  databricks:
+    type: databricks
+    host: ${DATABRICKS_HOST}
+    database: default
+models:
+  gold_dp_rede_societaria_qsa:
+    description: Relações societárias de pessoas físicas e jurídicas
+    type: table
+    fields:
+      cnpj_basico:
+        type: string
+        required: true
+        description: CNPJ básico da empresa
+      identificador_socio:
+        type: integer
+        required: true
+        description: Tipo de sócio (1-PJ, 2-PF, 3-Estrangeiro)
+      nome_socio:
+        type: string
+        required: true
+        description: Nome ou Razão Social do integrante societário
+      cpf_cnpj_socio:
+        type: string
+        required: false
+        description: Documento do sócio (mascarado ou limpo)
+      qualificacao_socio:
+        type: integer
+        required: true
+        description: Código de qualificação societária (administrador, sócio-gerente, etc.)
+      data_entrada_sociedade:
+        type: date
+        required: false
+      pais_socio:
+        type: integer
+        required: false
+      representante_legal:
+        type: string
+        required: false
+      nome_representante:
+        type: string
+        required: false
+      faixa_etaria:
+        type: integer
+        required: false

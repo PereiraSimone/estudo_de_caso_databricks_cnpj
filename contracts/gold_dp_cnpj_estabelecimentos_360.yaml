@@ -7,7 +7,7 @@ info:
   description: Tabela Gold com a consolidação cadastral dos estabelecimentos da Receita Federal.
   owner: Data Engineering / ALICE Platform
 servers:
-  databricks:
+  homolog:
     type: databricks
     host: ${DATABRICKS_HOST}
     database: default

@@ -10,7 +10,8 @@ servers:
   homolog:
     type: databricks
     host: ${DATABRICKS_HOST}
-    database: default
+    catalog: workspace
+    database: homolog_gold    # ou schema: homolog_gold dependendo da versao
 models:
   gold_dp_cnpj_estabelecimentos_360:
     description: Dimensão de estabelecimentos consolidados

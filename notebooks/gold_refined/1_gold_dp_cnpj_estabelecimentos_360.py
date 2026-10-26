@@ -53,6 +53,6 @@ df_gold_estabelecimentos = df_gold_estabelecimentos.filter(
     .mode("overwrite")
     .option("overwriteSchema", "true")
     .partitionBy("sg_uf")
-    .saveAsTable(f"{SCHEMA_GOLD}.gold_dp_cnpj_estabelecimentos_360")
+    .saveAsTable(f"{SCHEMA_GOLD}.workspace.homolog_gold.gold_dp_cnpj_estabelecimentos_360")
 )
 print(f"-> {SCHEMA_GOLD}.gold_dp_cnpj_estabelecimentos_360 criada.")

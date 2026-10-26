@@ -7,10 +7,11 @@ info:
   description: Tabela analítica agregada com variáveis de entrada e saída para machine learning.
   owner: Data Science / ALICE ML Governance
 servers:
-  databricks:
+  homolog:
     type: databricks
     host: ${DATABRICKS_HOST}
-    database: default
+    catalog: workspace
+    database: homolog_gold  
 models:
   gold_dp_score_saude_e_propensao_pj:
     description: Scores preditivos e métricas agregadas por empresa

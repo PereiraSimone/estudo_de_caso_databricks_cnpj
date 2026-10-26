@@ -7,10 +7,11 @@ info:
   description: Tabela Gold mapeando sócios, administradores e relacionamentos societários de PJ.
   owner: Data Engineering / ALICE Platform
 servers:
-  databricks:
+  homolog:
     type: databricks
     host: ${DATABRICKS_HOST}
-    database: default
+    catalog: workspace
+    database: homolog_gold  
 models:
   gold_dp_rede_societaria_qsa:
     description: Relações societárias de pessoas físicas e jurídicas

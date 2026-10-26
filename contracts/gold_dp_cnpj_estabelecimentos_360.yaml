@@ -1,0 +1,76 @@
+spec: odcs
+version: 3.0.0
+id: urn:datacontract:gold:cnpj_estabelecimentos_360
+info:
+  title: Visão 360 Estabelecimentos e Cadastros CNPJ
+  version: 2.1.0
+  description: Tabela Gold com a consolidação cadastral dos estabelecimentos da Receita Federal.
+  owner: Data Engineering / ALICE Platform
+servers:
+  homolog:
+    type: databricks
+    host: ${DATABRICKS_HOST}
+    catalog: workspace
+    database: homolog_gold    # ou schema: homolog_gold dependendo da versao
+models:
+  gold_dp_cnpj_estabelecimentos_360:
+    description: Dimensão de estabelecimentos consolidados
+    type: table
+    fields:
+      nr_cnpj:
+        type: string
+        required: true
+        unique: true
+        description: CNPJ completo com 14 dígitos (chave primária da entidade)
+      cnpj_basico:
+        type: string
+        required: true
+        description: Raiz do CNPJ com 8 dígitos
+      cnpj_ordem:
+        type: string
+        required: true
+      cnpj_dv:
+        type: string
+        required: true
+      identificador_matriz_filial:
+        type: integer
+        required: true
+      nome_fantasia:
+        type: string
+        required: false
+      situacao_cadastral:
+        type: integer
+        required: true
+      data_situacao_cadastral:
+        type: date
+        required: false
+      motivo_situacao_cadastral:
+        type: integer
+        required: false
+      cnae_fiscal_principal:
+        type: string
+        required: true
+      cnae_fiscal_secundaria:
+        type: string
+        required: false
+      uf:
+        type: string
+        required: true
+      municipio:
+        type: string
+        required: true
+      data_inicio_atividade:
+        type: date
+        required: false
+      razao_social:
+        type: string
+        required: false
+      natureza_juridica:
+        type: integer
+        required: false
+      capital_social:
+        type: double
+        required: false
+      porte_empresa:
+        type: integer
+        required: false

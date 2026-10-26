@@ -41,4 +41,4 @@ jobs:
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
           DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
         run: |
-          datacontract test contracts/gold_dp_cnpj_estabelecimentos_360.json
+          datacontract test contracts/gold_dp_cnpj_estabelecimentos_360.yaml
